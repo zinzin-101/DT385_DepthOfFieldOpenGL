@@ -28,6 +28,8 @@ bool bloom = true;
 bool bloomKeyPressed = false;
 float exposure = 1.0f;
 
+float blurDepth = 0.5f;
+
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 float lastX = (float)SCR_WIDTH / 2.0;
@@ -150,27 +152,6 @@ int main()
 			std::cout << "Framebuffer not complete!" << std::endl;
 	}
 
-	// configure depth buffer
-	// ----------------------
-	unsigned int depthBufferFBO;
-	glGenFramebuffers(1, &depthBufferFBO);
-	unsigned int depthBuffer;
-	glGenTextures(1, &depthBuffer);
-	glBindTexture(GL_TEXTURE_2D, depthBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-	// attach depth texture as FBO's depth buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, depthBufferFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthBuffer, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 	// lighting info
 	// -------------
 	// positions
@@ -226,6 +207,7 @@ int main()
 		shader.use();
 		shader.setMat4("projection", projection);
 		shader.setMat4("view", view);
+		shader.setFloat("blurDepth", blurDepth);
 		glActiveTexture(GL_TEXTURE0);
 		renderScene(woodTexture, containerTexture, lightPositions, lightColors, shader, shaderLight, model, view, projection);
 
@@ -260,7 +242,7 @@ int main()
 		shaderBloomFinal.setFloat("exposure", exposure);
 		renderQuad();
 
-		std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
+		std::cout << "blur depth: " << blurDepth << std::endl;
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
@@ -397,6 +379,13 @@ void processInput(GLFWwindow* window)
 		camera.ProcessKeyboard(UP, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 		camera.ProcessKeyboard(DOWN, deltaTime);
+
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		blurDepth += deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		blurDepth -= deltaTime;
+
+	blurDepth = glm::clamp(blurDepth, 0.0f, 1.0f);
 
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !bloomKeyPressed)
 	{
@@ -568,6 +557,7 @@ void renderScene(unsigned int woodTexture, unsigned int containerTexture,
 	shaderLight.use();
 	shaderLight.setMat4("projection", projection);
 	shaderLight.setMat4("view", view);
+	shaderLight.setFloat("blurDepth", blurDepth);
 
 	for (unsigned int i = 0; i < lightPositions.size(); i++)
 	{

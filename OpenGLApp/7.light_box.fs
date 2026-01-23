@@ -9,6 +9,7 @@ in VS_OUT {
 } fs_in;
 
 uniform vec3 lightColor;
+uniform float blurDepth;
 
 float LinearizeDepth(float depth);
 
@@ -28,7 +29,7 @@ void main()
 
     FragColor = vec4(vec3(0.0), 1.0);
 
-    if (depth < 0.5){
+    if (depth < blurDepth){
         BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
         FragColor = vec4(lightColor, 1.0);
     }

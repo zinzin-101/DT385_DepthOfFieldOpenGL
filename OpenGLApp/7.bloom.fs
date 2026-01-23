@@ -16,6 +16,7 @@ struct Light {
 uniform Light lights[4];
 uniform sampler2D diffuseTexture;
 uniform vec3 viewPos;
+uniform float blurDepth;
 
 float LinearizeDepth(float depth);
 
@@ -53,7 +54,7 @@ void main()
     BrightColor = vec4(result, 1.0);
     FragColor = vec4(vec3(0.0), 1.0);
 
-    if (depth < 0.5){
+    if (depth < blurDepth){
         BrightColor = vec4(vec3(0.0), 1.0);
         FragColor = vec4(result, 1.0);
     }
