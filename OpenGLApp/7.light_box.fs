@@ -1,6 +1,7 @@
 #version 330 core
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
+layout (location = 2) out vec4 DepthValue;
 
 in VS_OUT {
     vec3 FragPos;
@@ -25,14 +26,7 @@ void main()
     float depth = LinearizeDepth(gl_FragCoord.z);
 
     BrightColor = FragColor;
-
-    FragColor = vec4(vec3(0.0), 1.0);
-
-    if (depth < 0.5){
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
-        FragColor = vec4(lightColor, 1.0);
-    }
-
+    DepthValue = vec4(depth);
 }
 
 float LinearizeDepth(float depth)

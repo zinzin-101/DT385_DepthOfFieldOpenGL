@@ -28,6 +28,8 @@ bool bloom = true;
 bool bloomKeyPressed = false;
 float exposure = 1.0f;
 
+float blurDepth = 0.5f;
+
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 float lastX = (float)SCR_WIDTH / 2.0;
@@ -103,9 +105,9 @@ int main()
 	glGenFramebuffers(1, &hdrFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 	// create 2 floating point color buffers (1 for normal rendering, other for brightness threshold values)
-	unsigned int colorBuffers[2];
-	glGenTextures(2, colorBuffers);
-	for (unsigned int i = 0; i < 2; i++)
+	unsigned int colorBuffers[3];
+	glGenTextures(3, colorBuffers);
+	for (unsigned int i = 0; i < 3; i++)
 	{
 		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -123,8 +125,8 @@ int main()
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
 	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
-	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, attachments);
+	unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+	glDrawBuffers(3, attachments);
 	// finally check if framebuffer is complete
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Framebuffer not complete!" << std::endl;
@@ -149,27 +151,6 @@ int main()
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			std::cout << "Framebuffer not complete!" << std::endl;
 	}
-
-	// configure depth buffer
-	// ----------------------
-	unsigned int depthBufferFBO;
-	glGenFramebuffers(1, &depthBufferFBO);
-	unsigned int depthBuffer;
-	glGenTextures(1, &depthBuffer);
-	glBindTexture(GL_TEXTURE_2D, depthBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-	// attach depth texture as FBO's depth buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, depthBufferFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthBuffer, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// lighting info
 	// -------------
@@ -196,6 +177,7 @@ int main()
 	shaderBloomFinal.use();
 	shaderBloomFinal.setInt("scene", 0);
 	shaderBloomFinal.setInt("bloomBlur", 1);
+	shaderBloomFinal.setInt("depthBuffer", 2);
 
 	// render loop
 	// -----------
@@ -234,7 +216,7 @@ int main()
 		// 2. blur bright fragments with two-pass Gaussian Blur 
 		// --------------------------------------------------
 		bool horizontal = true, first_iteration = true;
-		unsigned int amount = 1;
+		unsigned int amount = 100;
 		shaderBlur.use();
 		for (unsigned int i = 0; i < amount; i++)
 		{
@@ -250,18 +232,21 @@ int main()
 
 		// 3. now render floating point color buffer to 2D quad and tonemap HDR colors to default framebuffer's (clamped) color range
 		// --------------------------------------------------------------------------------------------------------------------------
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 		shaderBloomFinal.use();
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[2]);
 		shaderBloomFinal.setInt("bloom", bloom);
 		shaderBloomFinal.setFloat("exposure", exposure);
+		shaderBloomFinal.setFloat("blurDepth", blurDepth);
 		renderQuad();
 
-		std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
-
+		//std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
+		std::cout << "blur depth: " << blurDepth << std::endl;
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
 		glfwSwapBuffers(window);
@@ -397,6 +382,14 @@ void processInput(GLFWwindow* window)
 		camera.ProcessKeyboard(UP, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 		camera.ProcessKeyboard(DOWN, deltaTime);
+
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		blurDepth += deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		blurDepth -= deltaTime;
+
+	blurDepth = glm::clamp(blurDepth, 0.0f, 1.0f);
+
 
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !bloomKeyPressed)
 	{
