@@ -60,7 +60,7 @@ int main()
 
 	// glfw window creation
 	// --------------------
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGLDepthOfField", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -178,6 +178,8 @@ int main()
 	shaderBloomFinal.setInt("scene", 0);
 	shaderBloomFinal.setInt("bloomBlur", 1);
 
+	camera.MovementSpeed = 1.0f;
+
 	// render loop
 	// -----------
 	while (!glfwWindowShouldClose(window))
@@ -216,7 +218,7 @@ int main()
 		// 2. blur bright fragments with two-pass Gaussian Blur 
 		// --------------------------------------------------
 		bool horizontal = true, first_iteration = true;
-		unsigned int amount = 1;
+		unsigned int amount = 10;
 		shaderBlur.use();
 		for (unsigned int i = 0; i < amount; i++)
 		{
