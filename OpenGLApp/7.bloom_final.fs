@@ -24,11 +24,12 @@ void main()
     //vec3 result = vec3(1.0) - exp(-hdrColor * exposure);
     // also gamma correct while we're at it       
 
-    vec3 result = mix(hdrColor, bloomColor, depth);
-    if (depth > blurDepth)
-        FragColor = vec4(vec3(result), 1.0);
-    else
-        FragColor = vec4(vec3(result), 1.0);
+    vec3 result = mix(hdrColor, bloomColor, abs(depth - 0.5));
+    FragColor = vec4(vec3(result), 1.0);
+    //if (depth > blurDepth)
+    //    FragColor = vec4(vec3(result), 1.0);
+    //else
+    //    FragColor = vec4(vec3(result), 1.0);
 
     //FragColor = vec4(vec3(depth), 1.0);
 }

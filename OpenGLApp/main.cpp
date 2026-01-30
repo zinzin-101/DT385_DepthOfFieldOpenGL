@@ -216,7 +216,7 @@ int main()
 		// 2. blur bright fragments with two-pass Gaussian Blur 
 		// --------------------------------------------------
 		bool horizontal = true, first_iteration = true;
-		unsigned int amount = 100;
+		unsigned int amount = 10;
 		shaderBlur.use();
 		for (unsigned int i = 0; i < amount; i++)
 		{
